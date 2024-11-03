@@ -2,16 +2,47 @@ import React, { useState, useEffect } from 'react';
 import WeatherCard from './WeatherCard';
 import { Grid, Button, Box, Typography, IconButton, Tooltip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-
 import AddIcon from '@mui/icons-material/Add';
 import ToggleUnitButton from './ToggleUnitButton';
 import AddLocationModal from './AddLocationModal';
+import axios from 'axios';
 
 const WeatherDashboard = () => {
   const [locations, setLocations] = useState(
-    JSON.parse(localStorage.getItem('locations')) || ['New York']
+    JSON.parse(localStorage.getItem('locations')) || []
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [defaultLocation, setDefaultLocation] = useState(null);
+
+  useEffect(() => {
+    // Attempt to get the user's current location
+    if (!defaultLocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            // Use the coordinates to fetch the current city
+            const response = await axios.get(
+              `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${process.env.REACT_APP_WEATHER_API_KEY}`
+            );
+            const city = response.data.name;
+            setDefaultLocation(city);
+            setLocations([city, ...locations]);
+          } catch (error) {
+            console.error('Error fetching location:', error);
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Fallback to a default location if geolocation fails
+          setDefaultLocation('New York');
+          setLocations(['New York', ...locations]);
+        }
+      );
+    } else {
+      setLocations([defaultLocation, ...locations]);
+    }
+  }, [defaultLocation]);
 
   useEffect(() => {
     localStorage.setItem('locations', JSON.stringify(locations));
